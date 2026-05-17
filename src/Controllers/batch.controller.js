@@ -13,6 +13,9 @@ const startBatch = async (req, res) => {
         let batch = await Batch.findOne({ batchName, teacherId });
 
         if (batch) {
+            if (batch.status !== 'active') {
+                batch.sessionCount += 1;
+            }
             batch.status = 'active';
             batch.teacherLat = parseFloat(teacherLat);
             batch.teacherLon = parseFloat(teacherLon);
@@ -23,7 +26,8 @@ const startBatch = async (req, res) => {
                 teacherId,
                 status: 'active',
                 teacherLat: parseFloat(teacherLat),
-                teacherLon: parseFloat(teacherLon)
+                teacherLon: parseFloat(teacherLon),
+                sessionCount: 1
             });
             await batch.save();
         }
@@ -78,8 +82,24 @@ const getActiveBatches = async (req, res) => {
     }
 };
 
+// Get all batches for a specific teacher
+const getTeacherBatches = async (req, res) => {
+    try {
+        const { teacherId } = req.params;
+        if (!teacherId) {
+            return res.status(400).json({ message: "teacherId is required" });
+        }
+        const batches = await Batch.find({ teacherId });
+        return res.status(200).json({ batches });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 module.exports = {
     startBatch,
     endBatch,
-    getActiveBatches
+    getActiveBatches,
+    getTeacherBatches
 };

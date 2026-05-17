@@ -22,6 +22,10 @@ const batchSchema = new mongoose.Schema({
     teacherLon: {
         type: Number,
         default: 0
+    },
+    sessionCount: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true });
 

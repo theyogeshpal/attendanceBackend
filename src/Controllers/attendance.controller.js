@@ -74,7 +74,7 @@ const markAttendance = async (req, res) => {
 
         if (batch.status !== 'active') {
             return res.status(400).json({ 
-                message: "Attendance session is currently closed for this batch." 
+                message: "Oops! Class has ended." 
             });
         }
 
@@ -95,8 +95,12 @@ const markAttendance = async (req, res) => {
             });
         }
 
-        // 5. Check if already marked present
-        const existingAttendance = await Attendance.findOne({ studentId, batchId });
+        // 5. Check if already marked present in the current active session
+        const existingAttendance = await Attendance.findOne({ 
+            studentId, 
+            batchId,
+            timestamp: { $gte: batch.updatedAt }
+        });
         if (existingAttendance) {
             return res.status(400).json({ message: "Attendance already marked for this batch session." });
         }
@@ -163,8 +167,152 @@ const getBatchHistory = async (req, res) => {
     }
 };
 
+// Get Attendance statistics for all students in a batch (Teacher portal)
+const getBatchAttendanceStats = async (req, res) => {
+    try {
+        const { batchId } = req.params;
+
+        if (!batchId) {
+            return res.status(400).json({ message: "batchId is required" });
+        }
+
+        const batch = await Batch.findById(batchId);
+        if (!batch) {
+            return res.status(404).json({ message: "Batch not found" });
+        }
+
+        const totalSessions = batch.sessionCount || 0;
+
+        // Find all students enrolled in this batch
+        const students = await Student.find({ batchId });
+
+        const stats = [];
+        for (const student of students) {
+            const presentCount = await Attendance.countDocuments({
+                studentId: student._id,
+                batchId,
+                status: 'present'
+            });
+
+            const percentage = totalSessions > 0 
+                ? parseFloat(((presentCount / totalSessions) * 100).toFixed(1))
+                : 0.0;
+
+            stats.push({
+                studentId: student._id,
+                name: student.name,
+                mobile: student.mobile,
+                deviceId: student.deviceId,
+                presentCount,
+                totalSessions,
+                percentage
+            });
+        }
+
+        return res.status(200).json({
+            batchName: batch.batchName,
+            totalSessions,
+            stats
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// Get Month-wise Attendance Percentage for a Student (Student portal)
+const getStudentMonthWiseStats = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+
+        if (!studentId) {
+            return res.status(400).json({ message: "studentId is required" });
+        }
+
+        const student = await Student.findById(studentId);
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        // Get all attendance records for this student
+        const attendances = await Attendance.find({ studentId })
+            .populate('batchId', 'batchName')
+            .sort({ timestamp: -1 });
+
+        // Group student presence by month and batch
+        // We will construct an object: { "YYYY-MM": { batchId: { presentCount: X, presentDates: Set } } }
+        const monthlyStats = {};
+
+        for (const att of attendances) {
+            if (!att.batchId) continue;
+            const date = new Date(att.timestamp);
+            const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const dateString = date.toISOString().split('T')[0]; // "YYYY-MM-DD"
+            const batchId = att.batchId._id.toString();
+            const batchName = att.batchId.batchName;
+
+            if (!monthlyStats[yearMonth]) {
+                monthlyStats[yearMonth] = {};
+            }
+
+            if (!monthlyStats[yearMonth][batchId]) {
+                monthlyStats[yearMonth][batchId] = {
+                    batchName,
+                    presentCount: 0,
+                    presentDates: new Set()
+                };
+            }
+
+            monthlyStats[yearMonth][batchId].presentCount += 1;
+            monthlyStats[yearMonth][batchId].presentDates.add(dateString);
+        }
+
+        const finalStats = [];
+
+        // For each month and batch, count the total unique session days of the batch in that month
+        for (const [yearMonth, batches] of Object.entries(monthlyStats)) {
+            for (const [batchId, data] of Object.entries(batches)) {
+                // Find all unique days where ANY attendance was marked for this batch in this month
+                const startOfMonth = new Date(`${yearMonth}-01T00:00:00.000Z`);
+                const endOfMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 0, 23, 59, 59, 999);
+
+                // Get all unique dates when attendance was marked for this batch
+                const batchAttendances = await Attendance.find({
+                    batchId,
+                    timestamp: { $gte: startOfMonth, $lte: endOfMonth }
+                });
+
+                const uniqueSessionDates = new Set();
+                for (const bAtt of batchAttendances) {
+                    uniqueSessionDates.add(new Date(bAtt.timestamp).toISOString().split('T')[0]);
+                }
+
+                const totalSessions = uniqueSessionDates.size || 1; // Fallback to 1 to avoid Division by Zero
+                const presentCount = data.presentDates.size;
+                const percentage = parseFloat(((presentCount / totalSessions) * 100).toFixed(1));
+
+                finalStats.push({
+                    month: yearMonth, // e.g. "2026-05"
+                    batchId,
+                    batchName: data.batchName,
+                    presentCount,
+                    totalSessions,
+                    percentage: percentage > 100.0 ? 100.0 : percentage
+                });
+            }
+        }
+
+        return res.status(200).json({ stats: finalStats });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 module.exports = {
     markAttendance,
     getStudentHistory,
-    getBatchHistory
+    getBatchHistory,
+    getBatchAttendanceStats,
+    getStudentMonthWiseStats
 };

@@ -10,8 +10,8 @@ const studentRegister = async (req, res) => {
     try {
         const { name, mobile, password, batchId } = req.body;
 
-        if (!name || !mobile || !password) {
-            return res.status(400).json({ message: "All fields are required" });
+        if (!name || !mobile) {
+            return res.status(400).json({ message: "Name and Mobile are required" });
         }
 
         // Check if student already exists
@@ -20,9 +20,12 @@ const studentRegister = async (req, res) => {
             return res.status(400).json({ message: "Mobile number already registered" });
         }
 
+        // Determine password: if not provided, default to student@{mobile}
+        const studentPassword = password || `student@${mobile}`;
+
         // Hash password
         const salt = bcrypt.genSaltSync(10);
-        const hashedPassword = bcrypt.hashSync(password, salt);
+        const hashedPassword = bcrypt.hashSync(studentPassword, salt);
 
         const newStudent = new Student({
             name,
@@ -71,6 +74,13 @@ const studentLogin = async (req, res) => {
         // Handle Device Binding
         if (deviceId) {
             if (!student.deviceId) {
+                // Check if device is already registered by another student
+                const existingBinding = await Student.findOne({ deviceId, _id: { $ne: student._id } });
+                if (existingBinding) {
+                    return res.status(400).json({
+                        message: "Device registration failed! This device is already bound to another student."
+                    });
+                }
                 // First-time login: Bind device
                 student.deviceId = deviceId;
                 await student.save();
