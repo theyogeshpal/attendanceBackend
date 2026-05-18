@@ -6,7 +6,8 @@ const {
     ResetStudentDevice, 
     GetAllStudents,
     GetStudentsByBatch,
-    TeacherChangePassword
+    TeacherChangePassword,
+    AddStudentToBatch
 } = require('../Controllers/teacher.controller');
 
 const router = express.Router();
@@ -22,5 +23,6 @@ router.get("/students", GetAllStudents);
 
 // Batch-wise enrolled student list (for batch attendance sheet)
 router.get("/batch/:batchId/students", GetStudentsByBatch);
+router.post("/batch/add-student", AddStudentToBatch);
 
 module.exports = router

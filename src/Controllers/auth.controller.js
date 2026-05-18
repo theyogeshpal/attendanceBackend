@@ -31,13 +31,13 @@ const studentRegister = async (req, res) => {
             name,
             mobile,
             password: hashedPassword,
-            batchId: batchId || null
+            batchIds: batchId ? [batchId] : []
         });
 
         const savedStudent = await newStudent.save();
         
-        // Populate batchId details before responding
-        const populatedStudent = await Student.findById(savedStudent._id).populate('batchId');
+        // Populate batchIds details before responding
+        const populatedStudent = await Student.findById(savedStudent._id).populate('batchIds');
         const studentResponse = populatedStudent.toObject();
         delete studentResponse.password;
 
@@ -61,7 +61,7 @@ const studentLogin = async (req, res) => {
         }
 
         // Find Student and populate their assigned batch details
-        const student = await Student.findOne({ mobile }).populate('batchId');
+        const student = await Student.findOne({ mobile }).populate('batchIds');
         if (!student) {
             return res.status(404).json({ message: "Student not found" });
         }
@@ -157,7 +157,7 @@ const teacherLogin = async (req, res) => {
 // Update Student Profile
 const updateStudentProfile = async (req, res) => {
     try {
-        const { studentId, degree, year, rollNumber } = req.body;
+        const { studentId, degree, year, rollNumber, branch } = req.body;
 
         if (!studentId) {
             return res.status(400).json({ message: "studentId is required" });
@@ -171,6 +171,7 @@ const updateStudentProfile = async (req, res) => {
         if (degree !== undefined) student.degree = degree;
         if (year !== undefined) student.year = year;
         if (rollNumber !== undefined) student.rollNumber = rollNumber;
+        if (branch !== undefined) student.branch = branch;
 
         await student.save();
 

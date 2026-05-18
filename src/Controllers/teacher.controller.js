@@ -131,7 +131,7 @@ const ResetStudentDevice = async (req, res) => {
 // Get All Enrolled Students (with their batch name)
 const GetAllStudents = async (req, res) => {
     try {
-        const students = await Student.find({}).populate('batchId', 'batchName');
+        const students = await Student.find({}).populate('batchIds', 'batchName');
         return res.status(200).json({ students });
     } catch (err) {
         console.error(err);
@@ -147,7 +147,7 @@ const GetStudentsByBatch = async (req, res) => {
         if (!batchId) {
             return res.status(400).json({ message: "batchId is required" });
         }
-        const students = await Student.find({ batchId }).select('name mobile deviceId');
+        const students = await Student.find({ batchIds: batchId }).select('name mobile deviceId');
         return res.status(200).json({ students });
     } catch (err) {
         console.error(err);
@@ -187,6 +187,32 @@ const TeacherChangePassword = async (req, res) => {
     }
 };
 
+// Add Existing Student to Batch
+const AddStudentToBatch = async (req, res) => {
+    try {
+        const { studentId, batchId } = req.body;
+
+        if (!studentId || !batchId) {
+            return res.status(400).json({ message: "studentId and batchId are required" });
+        }
+
+        const student = await Student.findById(studentId);
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        if (!student.batchIds.includes(batchId)) {
+            student.batchIds.push(batchId);
+            await student.save();
+        }
+
+        return res.status(200).json({ message: "Student added to batch successfully", student });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 module.exports = {
     TeacherRegister, 
     TeacherDelete,
@@ -194,5 +220,6 @@ module.exports = {
     ResetStudentDevice,
     GetAllStudents,
     GetStudentsByBatch,
-    TeacherChangePassword
+    TeacherChangePassword,
+    AddStudentToBatch
 }

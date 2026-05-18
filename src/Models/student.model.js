@@ -18,11 +18,10 @@ const studentSchema = new mongoose.Schema({
         type: String,
         default: null
     },
-    batchId: {
+    batchIds: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Batch',
-        default: null
-    },
+        ref: 'Batch'
+    }],
     degree: {
         type: String,
         default: ""
@@ -32,6 +31,10 @@ const studentSchema = new mongoose.Schema({
         default: ""
     },
     rollNumber: {
+        type: String,
+        default: ""
+    },
+    branch: {
         type: String,
         default: ""
     }

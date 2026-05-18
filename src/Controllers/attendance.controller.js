@@ -60,7 +60,7 @@ const markAttendance = async (req, res) => {
         }
 
         // Verify that the student is enrolled in the batch they are trying to mark attendance for
-        if (!student.batchId || student.batchId.toString() !== batchId.toString()) {
+        if (!student.batchIds || !student.batchIds.some(id => id.toString() === batchId.toString())) {
             return res.status(403).json({
                 message: "Security Violation: You are not added to this batch! You can only mark attendance in your assigned batch."
             });
@@ -191,7 +191,7 @@ const getBatchAttendanceStats = async (req, res) => {
         const totalSessions = batch.sessionCount || 0;
 
         // Find all students enrolled in this batch
-        const students = await Student.find({ batchId });
+        const students = await Student.find({ batchIds: batchId });
 
         const stats = [];
         for (const student of students) {
