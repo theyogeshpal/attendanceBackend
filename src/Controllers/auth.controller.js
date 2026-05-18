@@ -36,8 +36,9 @@ const studentRegister = async (req, res) => {
 
         const savedStudent = await newStudent.save();
         
-        // Remove password from response
-        const studentResponse = savedStudent.toObject();
+        // Populate batchId details before responding
+        const populatedStudent = await Student.findById(savedStudent._id).populate('batchId');
+        const studentResponse = populatedStudent.toObject();
         delete studentResponse.password;
 
         return res.status(201).json({
@@ -59,8 +60,8 @@ const studentLogin = async (req, res) => {
             return res.status(400).json({ message: "Mobile number and password are required" });
         }
 
-        // Find Student
-        const student = await Student.findOne({ mobile });
+        // Find Student and populate their assigned batch details
+        const student = await Student.findOne({ mobile }).populate('batchId');
         if (!student) {
             return res.status(404).json({ message: "Student not found" });
         }
@@ -153,9 +154,43 @@ const teacherLogin = async (req, res) => {
     }
 };
 
+// Update Student Profile
+const updateStudentProfile = async (req, res) => {
+    try {
+        const { studentId, degree, year, rollNumber } = req.body;
+
+        if (!studentId) {
+            return res.status(400).json({ message: "studentId is required" });
+        }
+
+        const student = await Student.findById(studentId);
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        if (degree !== undefined) student.degree = degree;
+        if (year !== undefined) student.year = year;
+        if (rollNumber !== undefined) student.rollNumber = rollNumber;
+
+        await student.save();
+
+        const studentResponse = student.toObject();
+        delete studentResponse.password;
+
+        return res.status(200).json({
+            message: "Student profile updated successfully",
+            student: studentResponse
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 module.exports = {
     studentRegister,
     studentLogin,
     teacherLogin,
+    updateStudentProfile,
     JWT_SECRET
 };

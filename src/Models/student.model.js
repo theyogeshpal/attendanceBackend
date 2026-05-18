@@ -22,6 +22,18 @@ const studentSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Batch',
         default: null
+    },
+    degree: {
+        type: String,
+        default: ""
+    },
+    year: {
+        type: String,
+        default: ""
+    },
+    rollNumber: {
+        type: String,
+        default: ""
     }
 }, { timestamps: true });
 

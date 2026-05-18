@@ -140,10 +140,59 @@ const GetAllStudents = async (req, res) => {
 };
 
 
+// Get Students by Batch ID
+const GetStudentsByBatch = async (req, res) => {
+    try {
+        const { batchId } = req.params;
+        if (!batchId) {
+            return res.status(400).json({ message: "batchId is required" });
+        }
+        const students = await Student.find({ batchId }).select('name mobile deviceId');
+        return res.status(200).json({ students });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// Change Teacher Password
+const TeacherChangePassword = async (req, res) => {
+    try {
+        const { teacherId, currentPassword, newPassword } = req.body;
+
+        if (!teacherId || !currentPassword || !newPassword) {
+            return res.status(400).json({ message: "teacherId, currentPassword, and newPassword are required" });
+        }
+
+        const teacher = await Teacher.findById(teacherId);
+        if (!teacher) {
+            return res.status(404).json({ message: "Teacher not found" });
+        }
+
+        const isPasswordCorrect = bcrypt.compareSync(currentPassword, teacher.password);
+        if (!isPasswordCorrect) {
+            return res.status(400).json({ message: "Invalid current password" });
+        }
+
+        const salt = bcrypt.genSaltSync(10);
+        const hashedPassword = bcrypt.hashSync(newPassword, salt);
+
+        teacher.password = hashedPassword;
+        await teacher.save();
+
+        return res.status(200).json({ message: "Password updated successfully" });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 module.exports = {
     TeacherRegister, 
     TeacherDelete,
     UpdateProfile,
     ResetStudentDevice,
-    GetAllStudents
+    GetAllStudents,
+    GetStudentsByBatch,
+    TeacherChangePassword
 }

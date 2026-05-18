@@ -59,6 +59,13 @@ const markAttendance = async (req, res) => {
             return res.status(404).json({ message: "Student not found" });
         }
 
+        // Verify that the student is enrolled in the batch they are trying to mark attendance for
+        if (!student.batchId || student.batchId.toString() !== batchId.toString()) {
+            return res.status(403).json({
+                message: "Security Violation: You are not added to this batch! You can only mark attendance in your assigned batch."
+            });
+        }
+
         // If the student's deviceId is bound, ensure the incoming deviceId matches it
         if (student.deviceId && deviceId && student.deviceId !== deviceId) {
             return res.status(403).json({ 

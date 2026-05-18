@@ -4,7 +4,9 @@ const {
     TeacherDelete, 
     UpdateProfile, 
     ResetStudentDevice, 
-    GetAllStudents 
+    GetAllStudents,
+    GetStudentsByBatch,
+    TeacherChangePassword
 } = require('../Controllers/teacher.controller');
 
 const router = express.Router();
@@ -14,7 +16,11 @@ router.delete("/delete", TeacherDelete);
 
 // Profile & Student management routes
 router.put("/profile", UpdateProfile);
+router.put("/change-password", TeacherChangePassword);
 router.put("/reset-device", ResetStudentDevice);
 router.get("/students", GetAllStudents);
+
+// Batch-wise enrolled student list (for batch attendance sheet)
+router.get("/batch/:batchId/students", GetStudentsByBatch);
 
 module.exports = router
